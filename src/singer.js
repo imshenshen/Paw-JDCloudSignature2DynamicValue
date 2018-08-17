@@ -2,6 +2,53 @@ import URI from 'urijs'
 const unsignableHeaders = ['authorization', 'user-agent']
 const v2Identifier = 'jdcloud2_request'
 const CryptoJS = require('crypto-js')
+function uriEscape(string) {
+  var output = encodeURIComponent(string)
+  output = output.replace(/[^A-Za-z0-9_.~\-%]+/g, escape)
+
+  // AWS percent-encodes some extra non-standard characters in a URI
+  output = output.replace(/[*]/g, function(ch) {
+    return (
+      '%' +
+      ch
+        .charCodeAt(0)
+        .toString(16)
+        .toUpperCase()
+    )
+  })
+
+  return output
+}
+function uriEscapePath(string) {
+  var parts = []
+  string.split('/').forEach(function(part) {
+    parts.push(uriEscape(part))
+  })
+  return parts.join('/')
+}
+function queryParamsToString(params) {
+  var items = []
+  var escape = uriEscape
+  var sortedKeys = Object.keys(params).sort()
+
+  sortedKeys.forEach(function(name) {
+    var value = params[name]
+    var ename = escape(name)
+    var result = ename + '='
+    if (Array.isArray(value)) {
+      var vals = []
+      value.forEach(function(item) {
+        vals.push(escape(item))
+      })
+      result = ename + '=' + vals.sort().join('&' + ename + '=')
+    } else if (value !== undefined && value !== null) {
+      result = ename + '=' + escape(value)
+    }
+    items.push(result)
+  })
+
+  return items.join('&')
+}
 
 function hash256(input) {
   var dv = DynamicValue('com.luckymarmot.HashDynamicValue', {
@@ -66,8 +113,8 @@ export default class Singer {
   canonicalString() {
     let parts = []
     parts.push(this.request.method)
-    parts.push(this.uri.pathname())
-    parts.push(this.uri.search())
+    parts.push(uriEscapePath(this.uri.pathname()))
+    parts.push(queryParamsToString(URI.parseQuery(this.request.urlQuery)))
     parts.push(this.canonicalHeaders() + '\n')
     parts.push(this.signedHeaders())
     parts.push(hash256(this.request.body || ''))

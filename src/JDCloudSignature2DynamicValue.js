@@ -22,7 +22,7 @@ class JDCloudAuthorization {
       secretAccessKey: this.JDCLOUD_SECRET_ACCESS_KEY,
       algorithm: this.algorithm || 'JDCLOUD2-HMAC-SHA256',
       regionId: this.regionId,
-      serviceName: this.servicename
+      serviceName: this.serviceName
     })
     return auth.authorization()
   }
